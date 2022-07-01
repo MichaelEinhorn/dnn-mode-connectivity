@@ -51,15 +51,16 @@ def loaders(dataset, path, batch_size, num_workers, transform_name, use_test=Fal
         test_set = ds(path, train=False, download=True, transform=transform.test)
     else:
         print("Using train (45000) + validation (5000)")
-        train_set.train_data = train_set.train_data[:-5000]
-        train_set.train_labels = train_set.train_labels[:-5000]
+        print(train_set)
+        train_set.data = train_set.data[:-5000]
+        train_set.targets = train_set.targets[:-5000]
 
         test_set = ds(path, train=True, download=True, transform=transform.test)
         test_set.train = False
-        test_set.test_data = test_set.train_data[-5000:]
-        test_set.test_labels = test_set.train_labels[-5000:]
-        delattr(test_set, 'train_data')
-        delattr(test_set, 'train_labels')
+        test_set.data = test_set.data[-5000:]
+        test_set.targets = test_set.targets[-5000:]
+        #delattr(test_set, 'data')
+        #delattr(test_set, 'targets')
 
     return {
                'train': torch.utils.data.DataLoader(
@@ -76,4 +77,4 @@ def loaders(dataset, path, batch_size, num_workers, transform_name, use_test=Fal
                    num_workers=num_workers,
                    pin_memory=True
                ),
-           }, max(train_set.train_labels) + 1
+           }, max(train_set.targets) + 1

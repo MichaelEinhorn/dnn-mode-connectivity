@@ -302,6 +302,30 @@ class CurveNet(Module):
             weights.extend([w for w in module.compute_weights_t(coeffs_t) if w is not None])
         return np.concatenate([w.detach().cpu().numpy().ravel() for w in weights])
 
+    def weightsList(self, t):
+        coeffs_t = self.coeff_layer(t)
+        weights = []
+        for module in self.curve_modules:
+            weights.extend([w for w in module.compute_weights_t(coeffs_t) if w is not None])
+        return weights
+
+    def modelAt(self, t, architectureBase):
+        w = self.weightsList(t)
+
+        # for param in w:
+        #     print(torch.tensor(param).shape)
+
+        # print("end")
+
+        modelAtT = architectureBase.base(num_classes=self.num_classes, **architectureBase.kwargs)
+        for i, param_cur in enumerate(modelAtT.parameters()):
+            # print(param_cur.shape)
+            param_cur.data = w[i]
+
+        return modelAtT
+
+
+
     def _compute_l2(self):
         self.l2 = sum(module.l2 for module in self.curve_modules)
 

@@ -14,6 +14,8 @@ args = parser.parse_args()
 
 file = np.load(os.path.join(args.dir, 'plane.npz'))
 
+print(file['bend_coordinates'])
+
 matplotlib.rc('text', usetex=True)
 matplotlib.rc('text.latex', preamble=[r'\usepackage{sansmath}', r'\sansmath'])
 matplotlib.rc('font', **{'family':'sans-serif','sans-serif':['DejaVu Sans']})
@@ -57,7 +59,9 @@ def plane(grid, values, vmax=None, log_alpha=-5, N=7, cmap='jet_r'):
                             levels=levels,
                             zorder=0,
                             alpha=0.55)
+
     colorbar = plt.colorbar(format='%.2g')
+
     labels = list(colorbar.ax.get_yticklabels())
     labels[-1].set_text(r'$>\,$' + labels[-2].get_text())
     colorbar.ax.set_yticklabels(labels)

@@ -1,0 +1,7 @@
+pytorch
+torchvision=0.13
+tabulate
+scipy
+matplotlib
+seaborn
+torchinfo
