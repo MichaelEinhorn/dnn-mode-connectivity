@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from torch.nn import Module, Parameter
 from torch.nn.modules.utils import _pair
 from scipy.special import binom
-
+import torch.nn as nn
 
 class Bezier(Module):
     def __init__(self, num_bends):
@@ -94,6 +94,16 @@ class Linear(CurveModule):
         weight_t, bias_t = self.compute_weights_t(coeffs_t)
         return F.linear(input, weight_t, bias_t)
 
+    def makeLayer(self, coeffs_t):
+        weight_t, bias_t = self.compute_weights_t(coeffs_t)
+        print(weight_t.shape)
+        layer = nn.Linear(weight_t.shape[1], weight_t.shape[0], bias=bias_t is not None)
+        layer.weight.data.copy_(weight_t)
+        if bias_t is not None:
+            layer.bias.data.copy_(bias_t)
+        return layer
+
+
 
 class Conv2d(CurveModule):
 
@@ -149,6 +159,15 @@ class Conv2d(CurveModule):
         weight_t, bias_t = self.compute_weights_t(coeffs_t)
         return F.conv2d(input, weight_t, bias_t, self.stride,
                         self.padding, self.dilation, self.groups)
+
+    def makeLayer(self, coeffs_t):
+        weight_t, bias_t = self.compute_weights_t(coeffs_t)
+        print(weight_t.shape)
+        layer = nn.Conv2d(weight_t.shape[1], weight_t.shape[0], kernel_size=(weight_t.shape[2], weight_t.shape[3]), bias=bias_t is not None, padding=self.padding, stride=self.stride, dilation=self.dilation, groups=self.groups)
+        layer.weight.data.copy_(weight_t)
+        if bias_t is not None:
+            layer.bias.data.copy_(bias_t)
+        return layer
 
 
 class _BatchNorm(CurveModule):
@@ -223,6 +242,14 @@ class _BatchNorm(CurveModule):
             input, self.running_mean, self.running_var, weight_t, bias_t,
             self.training or not self.track_running_stats,
             exponential_average_factor, self.eps)
+
+    def makeLayer(self, coeffs_t):
+        exponential_average_factor = 0.0
+        weight_t, bias_t = self.compute_weights_t(coeffs_t)
+        layer = nn.BatchNorm2d(weight_t.shape[0])
+        layer.weight.data.copy_(weight_t)
+        layer.bias.data.copy_(bias_t)
+        return layer
 
     def extra_repr(self):
         return '{num_features}, eps={eps}, momentum={momentum}, affine={affine}, ' \
@@ -319,8 +346,16 @@ class CurveNet(Module):
 
         modelAtT = architectureBase.base(num_classes=self.num_classes, **architectureBase.kwargs)
         for i, param_cur in enumerate(modelAtT.parameters()):
+
+            # print(str(i) + " | " + str(param_cur.name) + " | " + str(param_cur.shape) + " | " + str(w[i].shape))
+
             # print(param_cur.shape)
-            param_cur.data = w[i]
+            param_cur.data.copy_(w[i])
+
+        # for i, param_cur in enumerate(modelAtT.parameters()):
+        #     print(param_cur.data.cuda() == w[i].cuda())
+
+        print(len(w))
 
         return modelAtT
 

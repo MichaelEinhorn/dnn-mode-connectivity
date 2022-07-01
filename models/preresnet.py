@@ -8,7 +8,7 @@ import torch.nn as nn
 
 import curves
 
-__all__ = ['PreResNet8', 'PreResNet14', 'PreResNet20', 'PreResNet110', 'PreResNet164']
+__all__ = ['PreResNet8', 'PreResNet14', 'PreResNet20', 'PreResNet110', 'PreResNet164', 'BasicBlock', 'Bottleneck', 'BasicBlockCurve', 'BottleneckCurve', 'PreResNetCurve', 'PreResNetBase']
 
 
 def conv3x3(in_planes, out_planes, stride=1):
