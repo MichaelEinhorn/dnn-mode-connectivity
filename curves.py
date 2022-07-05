@@ -345,17 +345,14 @@ class CurveNet(Module):
         # print("end")
 
         modelAtT = architectureBase.base(num_classes=self.num_classes, **architectureBase.kwargs)
-        for i, param_cur in enumerate(modelAtT.parameters()):
 
-            # print(str(i) + " | " + str(param_cur.name) + " | " + str(param_cur.shape) + " | " + str(w[i].shape))
-
-            # print(param_cur.shape)
-            param_cur.data.copy_(w[i])
-
-        # for i, param_cur in enumerate(modelAtT.parameters()):
-        #     print(param_cur.data.cuda() == w[i].cuda())
-
-        print(len(w))
+        p = self.weights(t)
+        offset = 0
+        for parameter in modelAtT.parameters():
+            size = np.prod(parameter.size())
+            value = p[offset:offset + size].reshape(parameter.size())
+            parameter.data.copy_(torch.from_numpy(value))
+            offset += size
 
         return modelAtT
 

@@ -55,7 +55,7 @@ def main():
         checkpoint = torch.load(args.ckpt)
         model.load_state_dict(checkpoint['model_state'])
 
-        t = 0.5
+        t = 0.2
         layerList = []
         print("printing layers")
         i = 0
@@ -63,17 +63,17 @@ def main():
 
 
 
-        for layer in flatten(model):
-            # print(i)
-            i += 1
-            # print(layer)
-            if not hasattr(layer, "makeLayer"):
-                if not isinstance(layer, torch.nn.ModuleList) and not isinstance(layer, models.BasicBlockCurve) \
-                        and not isinstance(layer, curves.CurveNet) and not isinstance(layer, models.PreResNetCurve) \
-                        and not isinstance(layer, curves.Bezier):
-                    layerList.append(layer)
-            else:
-                layerList.append(layer.makeLayer(coeffs_t))
+        # for layer in flatten(model):
+        #     # print(i)
+        #     i += 1
+        #     # print(layer)
+        #     if not hasattr(layer, "makeLayer"):
+        #         if not isinstance(layer, torch.nn.ModuleList) and not isinstance(layer, models.BasicBlockCurve) \
+        #                 and not isinstance(layer, curves.CurveNet) and not isinstance(layer, models.PreResNetCurve) \
+        #                 and not isinstance(layer, curves.Bezier):
+        #             layerList.append(layer)
+        #     else:
+        #         layerList.append(layer.makeLayer(coeffs_t))
 
 
         # for layer in model.children():
@@ -119,39 +119,49 @@ def main():
 
 
 
-        layerList2 = []
-        modelPoint = architecture.base(num_classes=num_classes, **architecture.kwargs)
-        checkpoint = torch.load("history/model1/checkpoint-200.pt")
-        modelPoint.load_state_dict(checkpoint['model_state'])
+        # layerList2 = []
+        # base_model = architecture.base(num_classes=num_classes, **architecture.kwargs)
+        # # checkpoint = torch.load("history/model1/checkpoint-200.pt")
+        # # base_model.load_state_dict(checkpoint['model_state'])
+        #
+        # p = model.weights(t)
+        # offset = 0
+        # for parameter in base_model.parameters():
+        #     size = np.prod(parameter.size())
+        #     value = p[offset:offset + size].reshape(parameter.size())
+        #     parameter.data.copy_(torch.from_numpy(value))
+        #     offset += size
 
-        i=0
-        for layer in flatten(modelPoint):
-            # print(i)
-            i += 1
-            # print(layer)
-            if not isinstance(layer, torch.nn.ModuleList) and not isinstance(layer, models.BasicBlock) \
-                    and not isinstance(layer, torch.nn.Sequential) and not isinstance(layer, models.PreResNetBase) \
-                    and not isinstance(layer, curves.Bezier):
-                layerList2.append(layer)
+        base_model = model.modelAt(t, architecture)
+
+        # i=0
+        # for layer in flatten(modelPoint):
+        #     # print(i)
+        #     i += 1
+        #     # print(layer)
+        #     if not isinstance(layer, torch.nn.ModuleList) and not isinstance(layer, models.BasicBlock) \
+        #             and not isinstance(layer, torch.nn.Sequential) and not isinstance(layer, models.PreResNetBase) \
+        #             and not isinstance(layer, curves.Bezier):
+        #         layerList2.append(layer)
 
         # print(layerList, len(layerList))
         #
         # print(layerList2, len(layerList2))
         #
         # print("zip")
-        for layer1, layer2 in zip(layerList, layerList2):
-            # print(layer1)
-            # print(layer2)
-            # print("\n")
-
-            if hasattr(layer1, "weight"):
-                weight = layer1.weight
-                if weight is not None:
-                    layer2.weight.data.copy_(weight)
-            if hasattr(layer1, "bias"):
-                bias = layer1.bias
-                if bias is not None:
-                    layer2.bias.data.copy_(bias)
+        # for layer1, layer2 in zip(layerList, layerList2):
+        #     # print(layer1)
+        #     # print(layer2)
+        #     # print("\n")
+        #
+        #     if hasattr(layer1, "weight"):
+        #         weight = layer1.weight
+        #         if weight is not None:
+        #             layer2.weight.data.copy_(weight)
+        #     if hasattr(layer1, "bias"):
+        #         bias = layer1.bias
+        #         if bias is not None:
+        #             layer2.bias.data.copy_(bias)
 
 
 
@@ -165,10 +175,13 @@ def main():
             shuffle_train=False
         )
         criterion = F.cross_entropy
-        modelPoint.cuda()
+        base_model.cuda()
 
-        tr_res = utils.test(loaders['train'], modelPoint, criterion)
-        te_res = utils.test(loaders['test'], modelPoint, criterion)
+        utils.update_bn(loaders['train'], base_model)
+        utils.update_bn(loaders['train'], model, t=t)
+
+        tr_res = utils.test(loaders['train'], base_model, criterion)
+        te_res = utils.test(loaders['test'], base_model, criterion)
         tr_loss = tr_res['loss']
         tr_nll = tr_res['nll']
         tr_acc = tr_res['accuracy']
@@ -180,7 +193,20 @@ def main():
         values = [tr_loss, tr_nll, tr_err, te_nll, te_err]
         print(values)
 
-        summary(modelPoint)
+        tr_res = utils.test(loaders['train'], model, criterion, t=t)
+        te_res = utils.test(loaders['test'], model, criterion, t=t)
+        tr_loss = tr_res['loss']
+        tr_nll = tr_res['nll']
+        tr_acc = tr_res['accuracy']
+        tr_err = 100.0 - tr_acc
+        te_loss = te_res['loss']
+        te_nll = te_res['nll']
+        te_acc = te_res['accuracy']
+        te_err = 100.0 - te_acc
+        values = [tr_loss, tr_nll, tr_err, te_nll, te_err]
+        print(values)
+
+        summary(base_model)
 
     else:
         model = architecture.base(num_classes=num_classes, **architecture.kwargs)
