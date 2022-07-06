@@ -346,6 +346,7 @@ class CurveNet(Module):
 
         modelAtT = architectureBase.base(num_classes=self.num_classes, **architectureBase.kwargs)
 
+        # takes a weight vector and reshapes it into the params of the model
         p = self.weights(t)
         offset = 0
         for parameter in modelAtT.parameters():

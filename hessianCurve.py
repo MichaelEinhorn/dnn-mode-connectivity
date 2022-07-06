@@ -127,6 +127,7 @@ def main():
         else:
             return arr.cpu()
 
+    # makes the function params -> loss so that the jacobian and hessian functions compute with respect to parameters
     def loss(*params):
         out: torch.Tensor = stateless.functional_call(model, {n: p for n, p in zip(names, params)}, inp)
         return criterion(out, target)
@@ -149,6 +150,7 @@ def main():
 
     w = list()
     curve_parameters = list(curve_model.net.parameters())
+    # converting a tuple of tensors for each layer into a single vector
     for i in range(args.num_bends):
         w.append(np.concatenate([
             p.data.cpu().numpy().ravel() for p in curve_parameters[i::args.num_bends]
@@ -156,6 +158,8 @@ def main():
 
     print('Weight space dimensionality: %d' % w[0].shape[0])
 
+    # u is the straight line path between the 2 models on the curve
+    # v is the vector perpendicular to u that the curved path detours in
     u = w[2] - w[0]
     dx = np.linalg.norm(u)
     u /= dx
@@ -169,6 +173,7 @@ def main():
     print(u.shape)
     print(v.shape)
 
+
     modelAtT = architecture.base(num_classes=10, **architecture.kwargs)
 
     summary(modelAtT, (128, 3, 32, 32))
@@ -176,6 +181,7 @@ def main():
     offset = 0
     uList = []
     vList = []
+    # reshapes u and v to match the layer structure of the model
     for parameter in modelAtT.parameters():
         size = np.prod(parameter.size())
         uList.append(torch.tensor(u[offset:offset + size].reshape(parameter.size())).cuda())
@@ -198,6 +204,7 @@ def main():
 
         previous_weights = weights.copy()
 
+        # symetric difference tangent direction
         h = 0.001
         weightsForward = curve_model.weights(t + h)
         weightsBack = curve_model.weights(t - h)
@@ -215,6 +222,7 @@ def main():
 
         curveVector = tuple(cList)
 
+        # statistics on train loss and test loss
         utils.update_bn(loaders['train'], curve_model, t=t)
         tr_res = utils.test(loaders['train'], curve_model, criterion, regularizer, t=t)
         te_res = utils.test(loaders['test'], curve_model, criterion, regularizer, t=t)
@@ -237,7 +245,7 @@ def main():
         print(table)
 
         # new calcs
-
+        # creates a standalone model that stores the params from the curve model which computes them at runtime
         model = curve_model.modelAt(t, architecture)
         model.cuda()
         utils.update_bn(loaders['train'], model)
@@ -306,6 +314,7 @@ def main():
         target = targetFull[offset:offset + batch_size].cuda()
         print(inp.shape)
 
+        # vector hessian products
         out = torch.autograd.functional.vhp(loss, inputs=tuple(model.parameters()), v=straightVector)
         out = toCPU(out)
 
