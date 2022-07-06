@@ -72,6 +72,8 @@ def main():
         shuffle_train=True
     )
 
+    inpFull, targetFull = next(iter(loaders['train']))
+
     architecture = getattr(models, args.model)
     curve = getattr(curves, args.curve)
     curve_model = curves.CurveNet(
@@ -196,8 +198,10 @@ def main():
 
         previous_weights = weights.copy()
 
-        weightsBack = curve_model.weights(t - 0.01)
-        curveVector = weights - weightsBack
+        h = 0.001
+        weightsForward = curve_model.weights(t + h)
+        weightsBack = curve_model.weights(t - h)
+        curveVector = weightsForward - weightsBack
         curveVector /= np.linalg.norm(curveVector)
 
         print(curveVector.shape)
@@ -239,11 +243,11 @@ def main():
         utils.update_bn(loaders['train'], model)
         model.eval()
 
-        inp, target = next(iter(loaders['train']))
+
         offset = 0
         batch_size = 128
-        inp = inp[offset:offset + batch_size].cuda()
-        target = target[offset:offset + batch_size].cuda()
+        inp = inpFull[offset:offset + batch_size].cuda()
+        target = targetFull[offset:offset + batch_size].cuda()
         print(inp.shape)
 
         names = list(n for n, _ in model.named_parameters())
@@ -258,6 +262,12 @@ def main():
 
         # jacOutParamList.append(jacobian(outputs, tuple(model.parameters())).cpu())
         # resetGrad(model)
+
+        offset = 0
+        batch_size = 1
+        inp = inpFull[offset:offset + batch_size].cuda()
+        target = targetFull[offset:offset + batch_size].cuda()
+        print(inp.shape)
 
         jacOutInpList.append(jacobian(model, inp).cpu())
         resetGrad(model)
@@ -289,6 +299,12 @@ def main():
         # hessDensityWeightList.append(density_weight)
         #
         # print(top_eigenvalues)
+
+        offset = 0
+        batch_size = 128
+        inp = inpFull[offset:offset + batch_size].cuda()
+        target = targetFull[offset:offset + batch_size].cuda()
+        print(inp.shape)
 
         out = torch.autograd.functional.vhp(loss, inputs=tuple(model.parameters()), v=straightVector)
         out = toCPU(out)
@@ -380,20 +396,20 @@ def main():
         te_err_avg=te_err_avg,
         te_err_int=te_err_int,
 
-        jacLossParamList=np.array(jacLossParamList, ),
-        # jacOutParamList=np.array(jacOutParamList),
-        jacOutInpList=np.array(jacOutInpList),
-        # hessTopEigenValList=np.array(hessTopEigenValList),
-        # hessTopEigenVecList=np.array(hessTopEigenVecList),
-        # hessTraceList=np.array(hessTraceList),
-        # hessDensityEigenList=np.array(hessDensityEigenList),
-        # hessDensityWeightList=np.array(hessDensityWeightList),
-        hessStraightList=np.array(hessStraightList),
-        hessCurveList=np.array(hessCurveList),
-        hessPerpList=np.array(hessPerpList),
-        curveVectorList=np.array(toCPU(curveVectorList)),
-        straightVector=np.array(toCPU(straightVector)),
-        perpVector=np.array(toCPU(perpVector)),
+        jacLossParamList=np.array(jacLossParamList, dtype=object),
+        # jacOutParamList=np.array(jacOutParamList, dtype=object),
+        jacOutInpList=np.array(jacOutInpList, dtype=object),
+        # hessTopEigenValList=np.array(hessTopEigenValList, dtype=object),
+        # hessTopEigenVecList=np.array(hessTopEigenVecList, dtype=object),
+        # hessTraceList=np.array(hessTraceList, dtype=object),
+        # hessDensityEigenList=np.array(hessDensityEigenList, dtype=object),
+        # hessDensityWeightList=np.array(hessDensityWeightList, dtype=object),
+        hessStraightList=np.array(hessStraightList, dtype=object),
+        hessCurveList=np.array(hessCurveList, dtype=object),
+        hessPerpList=np.array(hessPerpList, dtype=object),
+        curveVectorList=np.array(toCPU(curveVectorList), dtype=object),
+        straightVector=np.array(toCPU(straightVector), dtype=object),
+        perpVector=np.array(toCPU(perpVector), dtype=object),
     )
 
 if __name__ == '__main__':
