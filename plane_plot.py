@@ -14,6 +14,8 @@ args = parser.parse_args()
 
 file = np.load(os.path.join(args.dir, 'plane.npz'))
 
+np.savetxt("history/loss.csv", file['tr_loss'], delimiter=",")
+
 print(file['bend_coordinates'])
 
 matplotlib.rc('text', usetex=True)
