@@ -20,7 +20,7 @@ from torchinfo import summary
 
 import argparse
 
-# python hessianCurve.py --dir=history --num_points=5 --dataset=CIFAR10 --data_path=CIFAR --ckpt=history/curve1-2/checkpoint-200.pt --curve=Bezier --model=PreResNet20 --transform=ResNet
+# python hessianCurve.py --dir=history --num_points=2 --dataset=CIFAR10 --data_path=CIFAR --ckpt=history/curve1-2/checkpoint-200.pt --curve=Bezier --model=PreResNet20 --transform=ResNet
 
 def main():
     parser = argparse.ArgumentParser(description='DNN curve evaluation')
