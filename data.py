@@ -63,6 +63,10 @@ def loaders(dataset, path, batch_size, num_workers, transform_name, use_test=Fal
     if use_test:
         print('You are going to run models on the test set. Are you sure?')
         test_set = ds(path, train=False, download=True, transform=transform.test)
+
+        train_set.data = train_set.data[offset::partitions]
+        train_set.targets = train_set.targets[offset::partitions]
+
     else:
 
         train_set.data = train_set.data[offset:-5000:partitions]
