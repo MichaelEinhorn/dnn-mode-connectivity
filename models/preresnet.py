@@ -9,7 +9,7 @@ import torch.nn as nn
 import curves
 
 __all__ = ['PreResNet8', 'PreResNet14', 'PreResNet20', 'PreResNet110', 'PreResNet164', 'BasicBlock', 'Bottleneck', 'BasicBlockCurve', 'BottleneckCurve', 'PreResNetCurve', 'PreResNetBase',
-           'PreResNet8_4x', 'PreResNet14_4x', 'PreResNet20_4x']
+           'PreResNet8_4x', 'PreResNet14_4x', 'PreResNet20_4x', 'PreResNet38', 'PreResNet38_4x']
 
 
 def conv3x3(in_planes, out_planes, stride=1):
@@ -340,3 +340,13 @@ class PreResNet20_4x:
     base = PreResNetBase
     curve = PreResNetCurve
     kwargs = {'depth': 20, 'filters': (16, 64, 256)}
+
+class PreResNet38:
+    base = PreResNetBase
+    curve = PreResNetCurve
+    kwargs = {'depth': 38}
+
+class PreResNet38_4x:
+    base = PreResNetBase
+    curve = PreResNetCurve
+    kwargs = {'depth': 38, 'filters': (16, 64, 256)}
