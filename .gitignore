@@ -69,3 +69,5 @@ target/
 run.bat
 CIFAR/*
 history/*
+autoExp.sh
+submitLog.txt

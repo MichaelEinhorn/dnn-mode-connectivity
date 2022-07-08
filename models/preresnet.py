@@ -8,7 +8,8 @@ import torch.nn as nn
 
 import curves
 
-__all__ = ['PreResNet8', 'PreResNet14', 'PreResNet20', 'PreResNet110', 'PreResNet164', 'BasicBlock', 'Bottleneck', 'BasicBlockCurve', 'BottleneckCurve', 'PreResNetCurve', 'PreResNetBase']
+__all__ = ['PreResNet8', 'PreResNet14', 'PreResNet20', 'PreResNet110', 'PreResNet164', 'BasicBlock', 'Bottleneck', 'BasicBlockCurve', 'BottleneckCurve', 'PreResNetCurve', 'PreResNetBase',
+           'PreResNet8_4x', 'PreResNet14_4x', 'PreResNet20_4x']
 
 
 def conv3x3(in_planes, out_planes, stride=1):
@@ -167,7 +168,7 @@ class BottleneckCurve(nn.Module):
 
 class PreResNetBase(nn.Module):
 
-    def __init__(self, num_classes, depth=110):
+    def __init__(self, num_classes, depth=110, filters=(16, 32, 64)):
         super(PreResNetBase, self).__init__()
         if depth >= 44:
             assert (depth - 2) % 9 == 0, 'depth should be 9n+2'
@@ -178,16 +179,16 @@ class PreResNetBase(nn.Module):
             n = (depth - 2) // 6
             block = BasicBlock
 
-        self.inplanes = 16
-        self.conv1 = nn.Conv2d(3, 16, kernel_size=3, padding=1,
+        self.inplanes = filters[0]
+        self.conv1 = nn.Conv2d(3, filters[0], kernel_size=3, padding=1,
                                bias=False)
-        self.layer1 = self._make_layer(block, 16, n)
-        self.layer2 = self._make_layer(block, 32, n, stride=2)
-        self.layer3 = self._make_layer(block, 64, n, stride=2)
-        self.bn = nn.BatchNorm2d(64 * block.expansion)
+        self.layer1 = self._make_layer(block, filters[0], n)
+        self.layer2 = self._make_layer(block, filters[1], n, stride=2)
+        self.layer3 = self._make_layer(block, filters[2], n, stride=2)
+        self.bn = nn.BatchNorm2d(filters[2] * block.expansion)
         self.relu = nn.ReLU(inplace=True)
         self.avgpool = nn.AvgPool2d(8)
-        self.fc = nn.Linear(64 * block.expansion, num_classes)
+        self.fc = nn.Linear(filters[2] * block.expansion, num_classes)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -231,7 +232,7 @@ class PreResNetBase(nn.Module):
 
 class PreResNetCurve(nn.Module):
 
-    def __init__(self, num_classes, fix_points, depth=110):
+    def __init__(self, num_classes, fix_points, depth=110, filters=(16, 32, 64)):
         super(PreResNetCurve, self).__init__()
         if depth >= 44:
             assert (depth - 2) % 9 == 0, 'depth should be 9n+2'
@@ -245,16 +246,16 @@ class PreResNetCurve(nn.Module):
         self.depth = depth
         self.num_classes = num_classes
 
-        self.inplanes = 16
-        self.conv1 = curves.Conv2d(3, 16, kernel_size=3, padding=1,
+        self.inplanes = filters[0]
+        self.conv1 = curves.Conv2d(3, filters[0], kernel_size=3, padding=1,
                                    bias=False, fix_points=fix_points)
-        self.layer1 = self._make_layer(block, 16, n, fix_points=fix_points)
-        self.layer2 = self._make_layer(block, 32, n, stride=2, fix_points=fix_points)
-        self.layer3 = self._make_layer(block, 64, n, stride=2, fix_points=fix_points)
-        self.bn = curves.BatchNorm2d(64 * block.expansion, fix_points=fix_points)
+        self.layer1 = self._make_layer(block, filters[0], n, fix_points=fix_points)
+        self.layer2 = self._make_layer(block, filters[1], n, stride=2, fix_points=fix_points)
+        self.layer3 = self._make_layer(block, filters[2], n, stride=2, fix_points=fix_points)
+        self.bn = curves.BatchNorm2d(filters[2] * block.expansion, fix_points=fix_points)
         self.relu = nn.ReLU(inplace=True)
         self.avgpool = nn.AvgPool2d(8)
-        self.fc = curves.Linear(64 * block.expansion, num_classes, fix_points=fix_points)
+        self.fc = curves.Linear(filters[2] * block.expansion, num_classes, fix_points=fix_points)
 
         for m in self.modules():
             if isinstance(m, curves.Conv2d):
@@ -324,3 +325,18 @@ class PreResNet164:
     base = PreResNetBase
     curve = PreResNetCurve
     kwargs = {'depth': 164}
+
+class PreResNet8_4x:
+    base = PreResNetBase
+    curve = PreResNetCurve
+    kwargs = {'depth': 8, 'filters': (16, 64, 256)}
+
+class PreResNet14_4x:
+    base = PreResNetBase
+    curve = PreResNetCurve
+    kwargs = {'depth': 14, 'filters': (16, 64, 256)}
+
+class PreResNet20_4x:
+    base = PreResNetBase
+    curve = PreResNetCurve
+    kwargs = {'depth': 20, 'filters': (16, 64, 256)}

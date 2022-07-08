@@ -101,6 +101,16 @@ def test(test_loader, model, criterion, regularizer=None, **kwargs):
     }
 
 
+def dataDist(loader, num_classes):
+    total = np.zeros(num_classes)
+    batches = 0
+    for iter, (input, target) in enumerate(loader):
+        unique, counts = np.unique(target, return_counts=True)
+        total[unique] += counts
+        batches += 1
+    print("class distribution: ", total)
+    print("num batches: ", batches)
+
 
 def predictions(test_loader, model, **kwargs):
     model.eval()
@@ -166,3 +176,43 @@ def update_bn(loader, model, **kwargs):
         num_samples += batch_size
 
     model.apply(lambda module: _set_momenta(module, momenta))
+
+
+# test dataloaders
+if __name__ == '__main__':
+    import argparse
+    import data
+
+    parser = argparse.ArgumentParser(description='test loaders')
+
+    parser.add_argument('--dataset', type=str, default='CIFAR10', metavar='DATASET',
+                        help='dataset name (default: CIFAR10)')
+    parser.add_argument('--use_test', action='store_true',
+                        help='switches between validation and test set (default: validation)')
+    parser.add_argument('--transform', type=str, default='ResNet', metavar='TRANSFORM',
+                        help='transform name (default: ResNet)')
+    parser.add_argument('--data_path', type=str, default='CIFAR', metavar='PATH',
+                        help='path to datasets location (default: CIFAR)')
+    parser.add_argument('--batch_size', type=int, default=128, metavar='N',
+                        help='input batch size (default: 128)')
+    parser.add_argument('--num-workers', type=int, default=4, metavar='N',
+                        help='number of workers (default: 4)')
+    parser.add_argument('--parts', type=int, default=1, metavar='N',
+                        help='number of dataset partitions (default: 1)')
+    parser.add_argument('--offset', type=int, default=0, metavar='N',
+                        help='which partition to use (default: 0)')
+    args = parser.parse_args()
+
+    load, num = data.loaders(
+        args.dataset,
+        args.data_path,
+        args.batch_size,
+        args.num_workers,
+        args.transform,
+        args.use_test,
+        offset=args.offset,
+        partitions=args.parts
+
+    )
+
+    dataDist(load['train'], num)

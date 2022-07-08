@@ -11,6 +11,7 @@ import data
 import models
 import utils
 
+from torchinfo import summary
 
 
 def learning_rate_schedule(base_lr, epoch, total_epochs):
@@ -23,28 +24,36 @@ def learning_rate_schedule(base_lr, epoch, total_epochs):
         factor = 0.01
     return factor * base_lr
 
-# https://pytorch.org/docs/stable/notes/windows.html#multiprocessing-error-without-if-clause-protection
-def main():
-    parser = argparse.ArgumentParser(description='DNN curve training')
-    parser.add_argument('--dir', type=str, default='/tmp/curve/', metavar='DIR',
-                        help='training directory (default: /tmp/curve/)')
 
+def parseArgs():
+    parser = argparse.ArgumentParser(description='DNN curve training')
+
+    # use defaults
+    parser.add_argument('--dir', type=str, default='history', metavar='DIR',
+                        help='training directory (default: history)')
     parser.add_argument('--dataset', type=str, default='CIFAR10', metavar='DATASET',
                         help='dataset name (default: CIFAR10)')
     parser.add_argument('--use_test', action='store_true',
                         help='switches between validation and test set (default: validation)')
-    parser.add_argument('--transform', type=str, default='VGG', metavar='TRANSFORM',
-                        help='transform name (default: VGG)')
-    parser.add_argument('--data_path', type=str, default=None, metavar='PATH',
-                        help='path to datasets location (default: None)')
+    parser.add_argument('--data_path', type=str, default='CIFAR', metavar='PATH',
+                        help='path to datasets location (default: CIFAR)')
     parser.add_argument('--batch_size', type=int, default=128, metavar='N',
                         help='input batch size (default: 128)')
+    #########################################
+
+    # turn off data augmentation with ResNetNoAugment
+    parser.add_argument('--transform', type=str, default='ResNet', metavar='TRANSFORM',
+                        help='transform name (default: ResNet)')
+
+    # use 2 in google colab
     parser.add_argument('--num-workers', type=int, default=4, metavar='N',
                         help='number of workers (default: 4)')
 
+    # PreResNet20 or PreResNet20_4x for constant activation space size
     parser.add_argument('--model', type=str, default=None, metavar='MODEL', required=True,
                         help='model name (default: None)')
 
+    # leave default for not using curve
     parser.add_argument('--curve', type=str, default=None, metavar='CURVE',
                         help='curve type to use (default: None)')
     parser.add_argument('--num_bends', type=int, default=3, metavar='N',
@@ -60,6 +69,8 @@ def main():
     parser.set_defaults(init_linear=True)
     parser.add_argument('--init_linear_off', dest='init_linear', action='store_false',
                         help='turns off linear initialization of intermediate points (default: on)')
+    #############################################
+
     parser.add_argument('--resume', type=str, default=None, metavar='CKPT',
                         help='checkpoint to resume training from (default: None)')
 
@@ -74,9 +85,24 @@ def main():
     parser.add_argument('--wd', type=float, default=1e-4, metavar='WD',
                         help='weight decay (default: 1e-4)')
 
-    parser.add_argument('--seed', type=int, default=1, metavar='S', help='random seed (default: 1)')
+    # train on subsets of dataset
+    parser.add_argument('--parts', type=int, default=1, metavar='N',
+                        help='number of dataset partitions (default: 1)')
+    parser.add_argument('--offset', type=int, default=0, metavar='N',
+                        help='which partition to use (default: 0)')
+
+    parser.add_argument('--seed', type=int, default=None, metavar='S', help='random seed (default: None)')
 
     args = parser.parse_args()
+
+    return args
+
+
+# https://pytorch.org/docs/stable/notes/windows.html#multiprocessing-error-without-if-clause-protection
+def main(args=None):
+
+    if args is None:
+        args = parseArgs()
 
     os.makedirs(args.dir, exist_ok=True)
     with open(os.path.join(args.dir, 'command.sh'), 'w') as f:
@@ -84,8 +110,10 @@ def main():
         f.write('\n')
 
     torch.backends.cudnn.benchmark = True
-    torch.manual_seed(args.seed)
-    torch.cuda.manual_seed(args.seed)
+
+    if args.seed is not None:
+        torch.manual_seed(args.seed)
+        torch.cuda.manual_seed(args.seed)
 
     loaders, num_classes = data.loaders(
         args.dataset,
@@ -93,13 +121,18 @@ def main():
         args.batch_size,
         args.num_workers,
         args.transform,
-        args.use_test
+        args.use_test,
+        offset=args.offset,
+        partitions=args.parts
     )
+
+    utils.dataDist(loaders["train"], num_classes)
 
     architecture = getattr(models, args.model)
 
     if args.curve is None:
         model = architecture.base(num_classes=num_classes, **architecture.kwargs)
+        summary(model, input_size=(128, 3, 32, 32))
     else:
         curve = getattr(curves, args.curve)
         model = curves.CurveNet(
@@ -126,19 +159,14 @@ def main():
                 model.init_linear()
     model.cuda()
 
-
-
-
-
     criterion = F.cross_entropy
-    regularizer = None if args.curve is None else curves.l2_regularizer(args.wd)
+    regularizer = None if args.curve is None or args.wd == 0 else curves.l2_regularizer(args.wd)
     optimizer = torch.optim.SGD(
         filter(lambda param: param.requires_grad, model.parameters()),
         lr=args.lr,
         momentum=args.momentum,
         weight_decay=args.wd if args.curve is None else 0.0
     )
-
 
     start_epoch = 1
     if args.resume is not None:
@@ -197,5 +225,8 @@ def main():
             optimizer_state=optimizer.state_dict()
         )
 
+
 if __name__ == '__main__':
-    main()
+    a = parseArgs()
+    print(a)
+    main(args=a)

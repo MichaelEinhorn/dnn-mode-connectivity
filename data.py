@@ -36,24 +36,40 @@ class Transforms:
                 transforms.Normalize(mean=[0.4914, 0.4822, 0.4465], std=[0.2023, 0.1994, 0.2010]),
             ])
 
+        class ResNetNoAugment:
+
+            train = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.4914, 0.4822, 0.4465], std=[0.2023, 0.1994, 0.2010]),
+            ])
+
+            test = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.4914, 0.4822, 0.4465], std=[0.2023, 0.1994, 0.2010]),
+            ])
+
     CIFAR100 = CIFAR10
 
 
 def loaders(dataset, path, batch_size, num_workers, transform_name, use_test=False,
-            shuffle_train=True):
+            shuffle_train=True, offset=0, partitions=1):
     ds = getattr(torchvision.datasets, dataset)
     path = os.path.join(path, dataset.lower())
     transform = getattr(getattr(Transforms, dataset), transform_name)
     train_set = ds(path, train=True, download=True, transform=transform.train)
 
+
+
     if use_test:
         print('You are going to run models on the test set. Are you sure?')
         test_set = ds(path, train=False, download=True, transform=transform.test)
     else:
-        print("Using train (45000) + validation (5000)")
+
+        train_set.data = train_set.data[offset:-5000:partitions]
+        train_set.targets = train_set.targets[offset:-5000:partitions]
+
+        print("Using train " + str(train_set.data.shape[0]) + " + validation (5000)")
         print(train_set)
-        train_set.data = train_set.data[:-5000]
-        train_set.targets = train_set.targets[:-5000]
 
         test_set = ds(path, train=True, download=True, transform=transform.test)
         test_set.train = False
