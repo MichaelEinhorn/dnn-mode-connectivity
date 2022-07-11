@@ -166,6 +166,25 @@ class BottleneckCurve(nn.Module):
         return out
 
 
+# https://discuss.pytorch.org/t/how-to-build-a-view-layer-in-pytorch-for-sequential-models/53958/12
+class View(nn.Module):
+    def __init__(self, shape):
+        super().__init__()
+        self.shape = shape
+
+    def __repr__(self):
+        return f'View{self.shape}'
+
+    def forward(self, input):
+        '''
+        Reshapes the input according to the shape saved in the view data structure.
+        '''
+        batch_size = input.size(0)
+        shape = (batch_size, *self.shape)
+        out = input.view(shape)
+        return out
+
+
 class PreResNetBase(nn.Module):
 
     def __init__(self, num_classes, depth=110, filters=(16, 32, 64)):
@@ -188,6 +207,8 @@ class PreResNetBase(nn.Module):
         self.bn = nn.BatchNorm2d(filters[2] * block.expansion)
         self.relu = nn.ReLU(inplace=True)
         self.avgpool = nn.AvgPool2d(8)
+        self.view = View(shape=(-1,))
+        # print("linear ", filters[2] * block.expansion)
         self.fc = nn.Linear(filters[2] * block.expansion, num_classes)
 
         for m in self.modules():
@@ -224,7 +245,8 @@ class PreResNetBase(nn.Module):
         x = self.relu(x)
 
         x = self.avgpool(x)
-        x = x.view(x.size(0), -1)
+        x = self.view(x)
+
         x = self.fc(x)
 
         return x
