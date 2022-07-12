@@ -192,6 +192,7 @@ def main(args=None):
 
     has_bn = utils.check_bn(model)
     test_res = {'loss': None, 'accuracy': None, 'nll': None}
+    lr = args.lr
     for epoch in range(start_epoch, args.epochs + 1):
         time_ep = time.time()
         if args.lr_schedule != "adaptive":
