@@ -188,7 +188,7 @@ def main(args=None):
     )
     
     if args.lr_schedule == "adaptive":
-        adaptive_lr_scheduler = torch.optim.ReduceLROnPlateau(optimizer, factor = 0.5)
+        adaptive_lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor = 0.5, verbose = True)
 
     has_bn = utils.check_bn(model)
     test_res = {'loss': None, 'accuracy': None, 'nll': None}
