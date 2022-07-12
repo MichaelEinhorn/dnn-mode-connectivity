@@ -76,6 +76,8 @@ def parseArgs():
 
     parser.add_argument('--epochs', type=int, default=200, metavar='N',
                         help='number of epochs to train (default: 200)')
+    parser.add_argument('--lr_schedule', type=str, default="fixed", 
+                        help='how to decrease the learning rate during training (default: fixed)')
     parser.add_argument('--save_freq', type=int, default=50, metavar='N',
                         help='save frequency (default: 50)')
     parser.add_argument('--lr', type=float, default=0.01, metavar='LR',
@@ -184,14 +186,17 @@ def main(args=None):
         model_state=model.state_dict(),
         optimizer_state=optimizer.state_dict()
     )
+    
+    if args.lr_schedule == "adaptive":
+        adaptive_lr_scheduler = torch.optim.ReduceLROnPlateau(optimizer, factor = 0.5)
 
     has_bn = utils.check_bn(model)
     test_res = {'loss': None, 'accuracy': None, 'nll': None}
     for epoch in range(start_epoch, args.epochs + 1):
         time_ep = time.time()
-
-        lr = learning_rate_schedule(args.lr, epoch, args.epochs)
-        utils.adjust_learning_rate(optimizer, lr)
+        if args.lr_schedule != "adaptive":
+            lr = learning_rate_schedule(args.lr, epoch, args.epochs)
+            utils.adjust_learning_rate(optimizer, lr)
 
         train_res = utils.train(loaders['train'], model, optimizer, criterion, regularizer)
         if args.curve is None or not has_bn:
@@ -208,6 +213,8 @@ def main(args=None):
         time_ep = time.time() - time_ep
         values = [epoch, lr, train_res['loss'], train_res['accuracy'], test_res['nll'],
                   test_res['accuracy'], time_ep]
+        if args.lr_schedule == "adaptive":
+            adaptive_lr_scheduler.step(train_res['loss'])
 
         table = tabulate.tabulate([values], columns, tablefmt='simple', floatfmt='9.4f')
         if epoch % 40 == 1 or epoch == start_epoch:
